@@ -32,6 +32,24 @@
 /*************** FILE INCLUSION *********************/
 #include "general_defines.h"
 
+/************************************************************************
+* DelayXms	helper															*
+*************************************************************************/
+void DelayXms(unsigned int xMs)
+{
+	// 1ms = 8'000 Taktzyklen @ 16MHz Fosc or 8MHz Fcy
+	unsigned int i;
+	for (i = 2*xMs; i > 0; i--)
+	{
+		asm volatile("repeat #4000");
+		ClrWdt();	// Clear watchdog timer
+	}
+}
+
+
+uint8_t isInitialyzed = 0;
+
+
 /*************** CONSTANT DEFINITIONS ***************/
 const uint8_t i2cAddr[2] = {ADR_MIDH, ADR_BASS};
 const uint8_t chOn[4]  = {0x00, 0x80, 0x00, 0x00};
@@ -118,29 +136,30 @@ void __attribute__((interrupt, no_auto_psv)) _CNInterrupt(void) {
         RES_AMP_N = 0;
         LED_GN = OFF;
         LED_YE = ON;
-    } else if (SPI_ERROR == 0 && FAULT1_N == 1 && FAULT2_N == 1){ // ReOp
-        RES_AMP_N = 1;
-        LED_YE = OFF;
-        LED_GN = ON;
+		clearTimer2; // Set the reEnable Timer to Zero
+		T2CONbits.TON = 1; // restart reEnable Timer
+        DisableIntInputChange;  // until next enable try
     }
+}
+
+//******************** Interrupt sevice rotuine for Timer 2   **********
+
+void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void)
+{
+	T2_Clear_Intr_Status_Bit;
+	if (SPI_ERROR == 0 && FAULT1_N == 1 && FAULT2_N == 1) {
+		RES_AMP_N = 1;
+        LED_GN = ON;
+        LED_YE = OFF;
+		T2CONbits.TON = 0; // disable the restart timer
+        DelayXms(1);
+        EnableIntInputChange;
+	}
 }
 
 /************************************************************************
 * Sub Routines                                                          *
 *************************************************************************/
-/************************************************************************
-* DelayXms																*
-*************************************************************************/
-void DelayXms(unsigned int xMs)
-{
-	// 1ms = 8'000 Taktzyklen @ 16MHz Fosc or 8MHz Fcy
-	unsigned int i;
-	for (i = 2*xMs; i > 0; i--)
-	{
-		asm volatile("repeat #4000");
-		ClrWdt();	// Clear watchdog timer
-	}
-}
 
 // Write single Register
 Write_1_Reg(uint8_t DevAddr, uint8_t Reg, uint8_t Data)
@@ -214,6 +233,7 @@ int main(void)
     InitOsc();
     InitPorts();
     InitI2C();
+    InitTimer();
     LED_GN = OFF;
     LED_YE = OFF;
     RST_N = 1;
@@ -229,6 +249,7 @@ int main(void)
     SetBookPage(ADR_MIDH, 0x00, 0x00);
     Write_1_Reg(ADR_MIDH, 0x02, 0x00); // enable DSP
 
+#if BiQuadActive
     // start set Input channel, enable sub channel
     for (i = 0; i < 2; i++){
         SetBookPage(i2cAddr[i], 0x8C, 0x1D);
@@ -331,10 +352,13 @@ int main(void)
         SetBookPage(i2cAddr[i], 0x8C, 0x23);
         Write_M_Reg(i2cAddr[i], 0x14, 4, swap);
     } // end set Input channel
-    
+#endif    
+    isInitialyzed = 1;
+    LED_GN = ON;
     DAC_MUTE_N = 1;
     RES_AMP_N = 1;
-
+    DelayXms(1);  // 70us FAULT_N Pulse after RES_AMP
+    EnableIntInputChange;
     while(1){
         ClrWdt();
     }

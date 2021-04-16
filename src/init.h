@@ -19,5 +19,6 @@
 void InitOsc(void);
 void InitPorts(void);
 void InitI2C(void);
+void InitTimer(void);
 
 #endif /* __INIT_H */

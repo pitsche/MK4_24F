@@ -9,6 +9,9 @@
 * Autor:        Patrick Isele
 **************************************************************************************/
 
+/******** switches & settings ********/
+#define BiQuadActive (1)                    // Use BeQuads
+
 /*********** FILE INCLUSION *********************************************/
 #define USE_AND_OR /* To enable AND_OR mask setting */
 
@@ -20,6 +23,7 @@
 #include <stdint.h>
 #include <i2c.h>
 #include <ports.h>
+#include <timer.h>
 #include "init.h"
 
 /*********** START OF GLOBAL DEFINITIONS ********************************/
@@ -64,6 +68,11 @@
  */
 #define ADR_MIDH  (0x4A)
 #define ADR_BASS  (0x4B)
+
+/****** Timer Settings ******/
+#define clearTimer2             WriteTimer2(0x0000)
+#define M_SEC                   0x061A          // .1 Sek
+#define TWO_SEC                0xF420          // 2 Sek
 
 /************ EOF *******************************************************/
 #endif /* __GENERAL_DEFINES_H */

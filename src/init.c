@@ -32,7 +32,7 @@ void InitPorts(void)
 	AD1PCFG = ANIN_CFG;					// Set Digital or Analog
     /*Configure the input change notification interrupt*/
     InputChange_Clear_Intr_Status_Bit;
-    ConfigIntCN(INT_ENABLE | INT_PRI_6);
+    ConfigIntCN(INT_DISABLE | INT_PRI_6);
     EnableCN4; // dir9001 error
     EnableCN5; // fault1_n
     EnableCN6; // fault2_n
@@ -69,4 +69,18 @@ void InitI2C(void)
    config2 = 78;
    OpenI2C1(config1,config2);   //configure I2C1
 
+}
+
+/************************************************************************
+* InitI2C																*
+*************************************************************************/
+void InitTimer(void)
+{
+//Configure Timer 2 for reEnable TimeOut/
+    T2CON = 0; //good practice
+    TMR2 = 0;
+    ConfigIntTimer2(T2_INT_ON | T2_INT_PRIOR_3); /*Enable Interrupt*/
+    PR2 = TWO_SEC;
+    T2CON = (T2_PS_1_256);
+    EnableIntT2;
 }
